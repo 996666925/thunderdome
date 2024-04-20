@@ -69,7 +69,6 @@ will only require minor version bumps, but will need significant justification.
 * `std` (default): Use the standard library. Disable to make this crate `no-std` compatible.
 */
 
-#![forbid(missing_docs)]
 // This crate is sensitive to integer overflow and wrapping behavior. As such,
 // we should usually use methods like `checked_add` and `checked_sub` instead
 // of the `Add` or `Sub` operators.
@@ -85,5 +84,7 @@ mod arena;
 mod free_pointer;
 mod generation;
 pub mod iter;
+mod serde;
 
 pub use crate::arena::{Arena, Index};
+pub use generation::Generation;

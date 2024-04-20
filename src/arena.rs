@@ -1,6 +1,7 @@
 use core::convert::TryInto;
 use core::mem::replace;
 use core::ops;
+use serde::{Deserialize, Serialize};
 
 // Vec is part of the prelude when std is enabled.
 #[cfg(not(feature = "std"))]
@@ -21,10 +22,10 @@ pub struct Arena<T> {
 }
 
 /// Index type for [`Arena`] that has a generation attached to it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Index {
-    pub(crate) slot: u32,
-    pub(crate) generation: Generation,
+    pub slot: u32,
+    pub generation: Generation,
 }
 
 impl Index {
@@ -119,6 +120,20 @@ impl<T> Entry<T> {
         match self {
             Entry::Empty(empty) => Some(empty),
             Entry::Occupied(_) => None,
+        }
+    }
+
+    pub(crate) fn value(&self) -> Option<&T> {
+        match self {
+            Entry::Occupied(occupied) => Some(&occupied.value),
+            Entry::Empty(_) => None,
+        }
+    }
+
+    pub(crate) fn generation(&self) -> Generation {
+        match self {
+            Entry::Occupied(occupied) => occupied.generation,
+            Entry::Empty(empty) => empty.generation,
         }
     }
 }
@@ -626,6 +641,28 @@ impl<T> Arena<T> {
                     self.len = self.len.checked_sub(1).unwrap_or_else(|| unreachable!());
                 }
             }
+        }
+    }
+
+    pub(crate) fn storage(&self) -> &Vec<Entry<T>> {
+        &self.storage
+    }
+
+    pub(crate) fn push_slot(&mut self, generation: Generation, value: Option<T>) {
+        if let Some(value) = value {
+            self.storage
+                .push(Entry::Occupied(OccupiedEntry { generation, value }));
+            self.len = self
+                .len
+                .checked_add(1)
+                .unwrap_or_else(|| panic!("Cannot insert more than u32::MAX elements into Arena"));
+        } else {
+            let slot = self.storage.len() as u32;
+            self.storage.push(Entry::Empty(EmptyEntry {
+                generation,
+                next_free: self.first_free,
+            }));
+            self.first_free = Some(FreePointer::from_slot(slot));
         }
     }
 }

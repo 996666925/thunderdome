@@ -1,15 +1,17 @@
 use core::fmt;
 use core::num::NonZeroU32;
 
+use serde::{Deserialize, Serialize};
+
 /// Tracks the generation of an entry in an arena. Encapsulates NonZeroU32 to
 /// reduce the number of redundant checks needed, as well as enforcing checked
 /// arithmetic on advancing a generation.
 ///
 /// Uses NonZeroU32 to help `Index` stay the same size when put inside an
 /// `Option`.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(transparent)]
-pub(crate) struct Generation(NonZeroU32);
+pub struct Generation(NonZeroU32);
 
 impl Generation {
     /// Represents a generation that is unlikely to be used. This is useful for
@@ -36,7 +38,7 @@ impl Generation {
         self.0.get()
     }
 
-    pub(crate) const fn from_u32(gen: u32) -> Option<Self> {
+    pub const fn from_u32(gen: u32) -> Option<Self> {
         // match like this since `map` is not constant
         match NonZeroU32::new(gen) {
             Some(v) => Some(Generation(v)),
